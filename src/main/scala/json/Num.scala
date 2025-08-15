@@ -3,7 +3,7 @@ package json
 
 import scala.util.Try
 
-import error.ParseError
+import com.github.aminmal.core.ParseError
 
 enum Num {
   case L(n: Long)

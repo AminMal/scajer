@@ -1,5 +1,5 @@
 package com.github.aminmal
-package error
+package core
 
 enum ParseError {
   case EOF

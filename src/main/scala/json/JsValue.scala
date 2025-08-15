@@ -58,4 +58,6 @@ enum JsValue {
   def prettyPrint(): String = indentImpl(" ".repeat(2), 1)
 
   def indent(s: String): String = indentImpl(s, 1)
+
+  def cursor: Cursor = Cursor.from(this)
 }

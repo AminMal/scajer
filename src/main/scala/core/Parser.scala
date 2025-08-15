@@ -4,7 +4,6 @@ package core
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-import error.ParseError
 import json.{JsValue, Num}
 
 object Parser {
