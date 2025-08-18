@@ -11,6 +11,15 @@ enum JsValue {
   case JsObject(underlying: mutable.Map[String, JsValue])
   case JsArray(arr: mutable.ListBuffer[JsValue])
 
+  private[json] def tpe: String = this match
+    case JsValue.JsNull               => "NULL"
+    case JsValue.JsString(s)          => "String"
+    case JsValue.JsNumber(_: Num.D)   => "Double"
+    case JsValue.JsNumber(_: Num.L)   => "Long"
+    case JsValue.JsBool(b)            => "Boolean"
+    case JsValue.JsObject(underlying) => "Object"
+    case JsValue.JsArray(arr)         => "Array"
+
   private def indentImpl(indentStr: String, level: Int): String = {
     val spaceInner = indentStr.repeat(level)
     val spaceOuter = indentStr.repeat(level - 1)

@@ -16,18 +16,19 @@ object Parser {
     def unapply(c: Char): Boolean = c.isWhitespace
   }
 
-  @tailrec private def parseStrTR(i: StrItr, startPos: Int): String =
+  @tailrec private def parseStrTR(i: StrItr, s: StringBuilder = StringBuilder()): String =
     i.pop() match {
-      case Some('"')  => i.getStringFromSlice(startPos, i.pos - 1)
-      case Some('\\') =>
-        i.pop()
-        parseStrTR(i, startPos)
-      case _          =>
-        parseStrTR(i, startPos)
+      case Some('"') | None => s.toString()
+      case Some('\\')       =>
+        i.pop().foreach(s.append)
+        parseStrTR(i, s)
+      case Some(other)      =>
+        s.append(other)
+        parseStrTR(i, s)
     }
 
   private def parseStr(i: StrItr): String =
-    parseStrTR(i, i.pos)
+    parseStrTR(i)
 
   @tailrec private def parseValue(i: StrItr): Either[ParseError, JsValue] = {
     val head = i.peek()
