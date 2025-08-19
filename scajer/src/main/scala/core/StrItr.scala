@@ -1,4 +1,3 @@
-package com.github.aminmal
 package core
 
 import scala.annotation.tailrec
@@ -12,15 +11,28 @@ class StrItr(val raw: String, var pos: Int) {
   inline def hasNext: Boolean = pos < len
 
   def takeWhile(p: Char => Boolean): String = {
-    @tailrec def matchCountrTR(matchCount: Int = 0): Int =
+    @tailrec def matchCounterTR(matchCount: Int = 0): Int =
       peek() match {
         case Some(c) if p(c) =>
           advance()
-          matchCountrTR(matchCount + 1)
+          matchCounterTR(matchCount + 1)
         case _               =>
           matchCount
       }
-    raw.slice(pos, pos + matchCountrTR())
+    raw.slice(pos, pos + matchCounterTR())
+  }
+
+  def advanceWhile(p: Char => Boolean): Unit = {
+    @tailrec def matchCounterTR(): Unit =
+      peek() match {
+        case Some(c) if p(c) =>
+          advance()
+          matchCounterTR()
+        case _               =>
+          ()
+      }
+
+    matchCounterTR()
   }
 
   inline def advance(n: Int = 1): Unit = pos += n

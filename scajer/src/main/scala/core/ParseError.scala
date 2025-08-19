@@ -1,4 +1,3 @@
-package com.github.aminmal
 package core
 
 enum ParseError {

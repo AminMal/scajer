@@ -1,12 +1,11 @@
-package com.github.aminmal
 package core
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 
-import json.{JsValue, Num}
+import json.{IndexedJsValue, JsPointer}
 
-object Parser {
+object Indexer {
 
   private object NumChar {
     def unapply(c: Char): Boolean = c.isDigit
@@ -30,13 +29,13 @@ object Parser {
   private def parseStr(i: StrItr): String =
     parseStrTR(i)
 
-  @tailrec private def parseValue(i: StrItr): Either[ParseError, JsValue] = {
+  @tailrec private def parseValue(i: StrItr): Either[ParseError, JsPointer] = {
     val head = i.peek()
     head match {
       case Some('t')                   =>
         if i.startsWith("true") then
           i.advance(4)
-          Right(JsValue.JsBool(true))
+          Right(JsPointer.True)
         else
           Left(
             ParseError.UnexpectedToken(i.pos, List("true"))
@@ -44,7 +43,7 @@ object Parser {
       case Some('f')                   =>
         if i.startsWith("false") then
           i.advance(5)
-          Right(JsValue.JsBool(false))
+          Right(JsPointer.False)
         else
           Left(
             ParseError.UnexpectedToken(i.pos, List("false"))
@@ -52,17 +51,19 @@ object Parser {
       case Some('n')                   =>
         if i.startsWith("null") then
           i.advance(4)
-          Right(JsValue.JsBool(true))
+          Right(JsPointer.Null)
         else
           Left(
             ParseError.UnexpectedToken(i.pos, List("true"))
           )
       case Some(NumChar()) | Some('-') =>
         val startPos = i.pos
-        Num.fromString(i.takeWhile(c => NumChar.unapply(c) || c == '.')).map(JsValue.JsNumber(_))
+        i.advance()
+        i.advanceWhile(c => NumChar.unapply(c) || c == '.')
+        Right(JsPointer.N(startPos, i.pos))
       case Some('"')                   =>
         i.advance()
-        Right(JsValue.JsString(parseStr(i)))
+        Right(JsPointer.Str(parseStr(i)))
       case Some('{')                   => parseObj(i)
       case Some('[')                   => parseArr(i)
       case Some(WhiteSpace())          =>
@@ -77,14 +78,14 @@ object Parser {
     case ExpectingKey, ExpectingKeyOrEndOfObject, ExpectingCommaOrEndOfObject, ExpectingColon, ExpectingValue
   }
 
-  private def parseObj(i: StrItr): Either[ParseError, JsValue] = {
-    val keyValues = mutable.HashMap.empty[String, JsValue]
+  private def parseObj(i: StrItr): Either[ParseError, JsPointer] = {
+    val keyValues = mutable.Map.empty[String, JsPointer]
     i.advance() // pop {
 
     @tailrec def po(
       state: ObjectParseState = ObjectParseState.ExpectingKeyOrEndOfObject,
       latestKey: Option[String] = None
-    ): Either[ParseError, JsValue] =
+    ): Either[ParseError, JsPointer] =
       i.peek() match
         case None                    => Left(ParseError.EOF)
         case Some(' ' | '\t' | '\n') =>
@@ -115,7 +116,7 @@ object Parser {
               next match
                 case '}' =>
                   i.advance()
-                  Right(JsValue.JsObject(keyValues))
+                  Right(JsPointer.Obj(keyValues))
                 case '"' =>
                   i.advance() // pop '"'
                   po(
@@ -134,7 +135,7 @@ object Parser {
               next match
                 case '}' =>
                   i.advance()
-                  Right(JsValue.JsObject(keyValues))
+                  Right(JsPointer.Obj(keyValues))
                 case ',' =>
                   i.advance()
                   po(
@@ -189,13 +190,13 @@ object Parser {
     case ExpectingValue, ExpectingValueOrEndOfArray, ExpectingCommaOrEndOfArray
   }
 
-  private def parseArr(i: StrItr): Either[ParseError, JsValue] = {
-    val values = mutable.ListBuffer.empty[JsValue]
+  private def parseArr(i: StrItr): Either[ParseError, JsPointer] = {
+    val values = mutable.ListBuffer.empty[JsPointer]
     i.advance() // pop [
 
     @tailrec def pa(
       state: ArrParseState
-    ): Either[ParseError, JsValue] =
+    ): Either[ParseError, JsPointer] =
       i.peek() match {
         case None                    => Left(ParseError.EOF)
         case Some(' ' | '\t' | '\n') =>
@@ -207,7 +208,7 @@ object Parser {
               head match
                 case ']' =>
                   i.advance()
-                  Right(JsValue.JsArray(values))
+                  Right(JsPointer.Arr(values))
                 case _   =>
                   parseValue(i) match
                     case Left(err)    => Left(err)
@@ -219,7 +220,7 @@ object Parser {
               head match
                 case ']' =>
                   i.advance()
-                  Right(JsValue.JsArray(values))
+                  Right(JsPointer.Arr(values))
                 case ',' =>
                   i.advance()
                   pa(state = ArrParseState.ExpectingValue)
@@ -254,11 +255,11 @@ object Parser {
       case Some(_)                   => false
     }
 
-  inline def parse(raw: String): Either[ParseError, JsValue] = {
+  inline def parse(raw: String): Either[ParseError, IndexedJsValue] = {
     val i = StrItr(raw, 0)
     parseValue(i) match {
       case Right(value) =>
-        if isEffectivelyEmpty(i) then Right(value)
+        if isEffectivelyEmpty(i) then Right(IndexedJsValue(raw, value))
         else Left(ParseError.UnexpectedToken(i.pos, expected = List("EOF")))
       case Left(err)    => Left(err)
     }

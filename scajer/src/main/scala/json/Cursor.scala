@@ -1,4 +1,3 @@
-package com.github.aminmal
 package json
 
 import scala.annotation.targetName

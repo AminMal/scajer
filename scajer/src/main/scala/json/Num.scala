@@ -1,9 +1,8 @@
-package com.github.aminmal
 package json
 
 import scala.util.Try
 
-import com.github.aminmal.core.ParseError
+import core.ParseError
 
 enum Num {
   case L(n: Long)
