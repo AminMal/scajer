@@ -7,7 +7,7 @@ enum JsValue {
   case JsString(s: String)
   case JsNumber(n: Num)
   case JsBool(b: Boolean)
-  case JsObject(underlying: mutable.Map[String, JsValue])
+  case JsObject(underlying: mutable.HashMap[String, JsValue])
   case JsArray(arr: mutable.ListBuffer[JsValue])
 
   private[json] def tpe: String = this match

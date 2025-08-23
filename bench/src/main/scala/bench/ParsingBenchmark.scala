@@ -1,12 +1,10 @@
 package bench
 
-import java.nio.file.{Files, Paths}
 import java.util.concurrent.TimeUnit
 
-import scala.concurrent.duration.*
 import scala.io.Source
 
-import core.{Indexer as MyIndexer, Parser as MyParser}
+import core.Parser as MyParser
 import io.circe.parser.*
 import org.openjdk.jmh.annotations.*
 import play.api.libs.json.*
@@ -23,6 +21,11 @@ class ParsingBenchmark {
   def setup(): Unit =
     src = Source.fromResource("medium_input.json").mkString
 
+    // --- My Parser ---
+  @Benchmark
+  def myParserParse(): Either[core.ParseError, json.JsValue] =
+    MyParser.parse(src)
+
   // --- Circe ---
   @Benchmark
   def circeParse(): Either[io.circe.ParsingFailure, io.circe.Json] =
@@ -33,13 +36,4 @@ class ParsingBenchmark {
   def playParse(): JsValue =
     Json.parse(src)
 
-  // --- My Parser ---
-  @Benchmark
-  def myParserParse(): Either[core.ParseError, json.JsValue] =
-    MyParser.parse(src)
-
-  // --- My Indexer ---
-  @Benchmark
-  def myIndexerParse(): Either[core.ParseError, json.IndexedJsValue] =
-    MyIndexer.parse(src)
 }

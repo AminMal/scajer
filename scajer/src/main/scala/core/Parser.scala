@@ -1,9 +1,9 @@
 package core
 
-import scala.annotation.tailrec
+import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 
-import json.{JsValue, Num}
+import json.{JsValue, JsonException, Num}
 
 object Parser {
 
@@ -15,19 +15,44 @@ object Parser {
     def unapply(c: Char): Boolean = c.isWhitespace
   }
 
-  @tailrec private def parseStrTR(i: StrItr, s: StringBuilder = StringBuilder()): String =
+  @tailrec private def parseSimpleStr(i: StrItr): Either[ParseError, Int] =
+    (i.pop(): @switch) match {
+      case Some(c) if c < ' ' => Left(ParseError.InvalidCharacter(i.pos, c))
+      case Some('\\')         => Right(-1)
+      case Some('"')          => Right(i.pos)
+      case Some(_)            => parseSimpleStr(i)
+      case None               => Left(ParseError.EOF)
+    }
+
+  private def smartParseStr(i: StrItr): Either[ParseError, String] = {
+    val start = i.pos
+    i.checkpoint()
+    parseSimpleStr(i) match {
+      case e @ Left(_)   => e.asInstanceOf
+      case Right(-1)     =>
+        i.resetCheckpoint()
+        parseStrTR(i)
+      case Right(endPos) =>
+        i.commitCheckpoint()
+        Right(i.raw.substring(start, endPos - 1))
+    }
+  }
+
+  @tailrec private def parseStrTR(i: StrItr, s: StringBuilder = StringBuilder()): Either[ParseError, String] =
     i.pop() match {
-      case Some('"') | None => s.toString()
+      // TODO: None should be an error case
+      case Some('"') | None => Right(s.toString())
       case Some('\\')       =>
         i.pop().foreach(s.append)
         parseStrTR(i, s)
+      // TODO: Add case for unicode, validate scape characters
       case Some(other)      =>
         s.append(other)
         parseStrTR(i, s)
     }
 
-  private def parseStr(i: StrItr): String =
-    parseStrTR(i)
+  private inline def parseStr(i: StrItr): Either[ParseError, String] =
+    smartParseStr(i)
 
   @tailrec private def parseValue(i: StrItr): Either[ParseError, JsValue] = {
     val head = i.peek()
@@ -61,7 +86,7 @@ object Parser {
         Num.fromString(i.takeWhile(c => NumChar.unapply(c) || c == '.')).map(JsValue.JsNumber(_))
       case Some('"')                   =>
         i.advance()
-        Right(JsValue.JsString(parseStr(i)))
+        parseStr(i).map(JsValue.JsString(_))
       case Some('{')                   => parseObj(i)
       case Some('[')                   => parseArr(i)
       case Some(WhiteSpace())          =>
@@ -100,7 +125,7 @@ object Parser {
                   i.advance() // pop '"'
                   po(
                     state = ObjectParseState.ExpectingColon,
-                    latestKey = Some(parseStr(i))
+                    latestKey = parseStr(i).toOption
                   )
                 case _   =>
                   Left(
@@ -119,7 +144,7 @@ object Parser {
                   i.advance() // pop '"'
                   po(
                     state = ObjectParseState.ExpectingColon,
-                    latestKey = Some(parseStr(i))
+                    latestKey = parseStr(i).toOption
                   )
                 case _   =>
                   Left(
