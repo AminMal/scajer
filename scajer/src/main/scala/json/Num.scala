@@ -1,7 +1,5 @@
 package json
 
-import scala.util.Try
-
 import core.ParseError
 
 enum Num {
@@ -11,7 +9,16 @@ enum Num {
 
 object Num {
 
-  def fromString(s: String): Either[ParseError, Num] =
-    if s.contains('.') then Try(s.mkString.toDouble).map(Num.D(_)).toEither.left.map(_ => ParseError.InvalidNumber("Double", s))
-    else Try(s.toLong).map(Num.L(_)).toEither.left.map(_ => ParseError.InvalidNumber("Long", s))
+  def fromString(s: String): Num =
+    if s.contains('.') then
+      try Num.D(s.toDouble)
+      catch {
+        case _: NumberFormatException => throw ParseError.InvalidNumber("Double", s)
+      }
+    else {
+      try Num.L(s.toLong)
+      catch {
+        case _: NumberFormatException => throw ParseError.InvalidNumber("Long", s)
+      }
+    }
 }

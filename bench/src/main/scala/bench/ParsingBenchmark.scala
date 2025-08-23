@@ -21,9 +21,9 @@ class ParsingBenchmark {
   def setup(): Unit =
     src = Source.fromResource("medium_input.json").mkString
 
-    // --- My Parser ---
+    // --- Scajer ---
   @Benchmark
-  def myParserParse(): Either[core.ParseError, json.JsValue] =
+  def scajerParse(): Either[core.ParseError, json.JsValue] =
     MyParser.parse(src)
 
   // --- Circe ---
