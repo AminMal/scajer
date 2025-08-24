@@ -1,8 +1,8 @@
 package core
 
 class StrItr(val raw: String, var pos: Int, var cp: Int = -1) {
-  private final val len           = raw.length
-  inline def peek(): Option[Char] = if hasNext then Some(raw(pos)) else None
+  private final val len   = raw.length
+  inline def peek(): Char = if hasNext then raw(pos) else StrItr.eof
 
   inline def take(n: Int): String = raw.slice(pos, pos + n)
 
@@ -22,7 +22,7 @@ class StrItr(val raw: String, var pos: Int, var cp: Int = -1) {
 
   inline def advance(n: Int = 1): Unit = pos += n
 
-  def pop(): Option[Char] = {
+  def pop(): Char = {
     val value = peek()
     advance()
     value
@@ -37,4 +37,8 @@ class StrItr(val raw: String, var pos: Int, var cp: Int = -1) {
     }
     true
   }
+}
+
+object StrItr {
+  final val eof: Char = 0
 }

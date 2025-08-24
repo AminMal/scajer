@@ -16,12 +16,12 @@ object Parser {
   }
 
   @tailrec private def parseSimpleStr(i: StrItr): Int =
-    (i.pop(): @switch) match {
-      case Some(c) if c < ' ' => throw ParseError.InvalidCharacter(i.pos, c)
-      case Some('\\')         => -1
-      case Some('"')          => i.pos
-      case Some(_)            => parseSimpleStr(i)
-      case None               => throw ParseError.EOF
+    i.pop() match {
+      case c if c < ' ' => throw ParseError.InvalidCharacter(i.pos, c)
+      case '\\'         => -1
+      case '"'          => i.pos
+      case StrItr.eof   => throw ParseError.EOF
+      case _            => parseSimpleStr(i)
     }
 
   private def smartParseStr(i: StrItr): String = {
@@ -38,25 +38,25 @@ object Parser {
   }
 
   @tailrec private def parseStrTR(i: StrItr, s: StringBuilder = StringBuilder()): String =
-    (i.pop(): @switch) match {
-      case None        => throw ParseError.EOF
-      case Some('"')   => s.toString()
-      case Some('\\')  =>
+    i.pop() match {
+      case StrItr.eof => throw ParseError.EOF
+      case '"'        => s.toString()
+      case '\\'       =>
         i.pop() match {
-          case Some('b')   => s.append('\b')
-          case Some('f')   => s.append('\f')
-          case Some('n')   => s.append('\n')
-          case Some('r')   => s.append('\r')
-          case Some('t')   => s.append('\t')
-          case Some('"')   => s.append('"')
-          case Some('/')   => s.append('/')
-          case Some('\\')  => s.append('\\')
-          case Some('u')   => throw new RuntimeException("Unicode not implemented yet")
-          case Some(other) => throw ParseError.InvalidEscapeCharacter(i.pos, other)
-          case None        => throw ParseError.EOF
+          case StrItr.eof => throw ParseError.EOF
+          case 'b'        => s.append('\b')
+          case 'f'        => s.append('\f')
+          case 'n'        => s.append('\n')
+          case 'r'        => s.append('\r')
+          case 't'        => s.append('\t')
+          case '"'        => s.append('"')
+          case '/'        => s.append('/')
+          case '\\'       => s.append('\\')
+          case 'u'        => throw new RuntimeException("Unicode not implemented yet")
+          case other      => throw ParseError.InvalidEscapeCharacter(i.pos, other)
         }
         parseStrTR(i, s)
-      case Some(other) =>
+      case other      =>
         s.append(other)
         parseStrTR(i, s)
     }
@@ -69,51 +69,51 @@ object Parser {
 
     @tailrec def parseNumberTr: JsValue =
       (i.peek(): @switch) match {
-        case Some('.') | Some(NumChar()) =>
+        case '.' | NumChar() =>
           i.advance()
           parseNumberTr
-        case _                           =>
+        case _               =>
           JsValue.JsNumber(Num.fromString(i.raw.substring(startPos, i.pos)))
       }
 
-    i.peek() match {
-      case Some('-') =>
+    (i.peek(): @switch) match {
+      case StrItr.eof => throw ParseError.EOF
+      case '-'        =>
         i.advance()
         parseNumberTr
-      case Some(_)   =>
+      case _          =>
         parseNumberTr
-      case None      => throw ParseError.EOF
     }
   }
 
   @tailrec private def parseValue(i: StrItr): JsValue =
-    (i.peek(): @switch) match {
-      case Some('t')                   =>
+    i.peek() match {
+      case 't'             =>
         if i.startsWith("true") then
           i.advance(4)
           JsValue.JsBool(true)
         else throw ParseError.UnexpectedToken(i.pos, List("true"))
-      case Some('f')                   =>
+      case 'f'             =>
         if i.startsWith("false") then
           i.advance(5)
           JsValue.JsBool(false)
         else throw ParseError.UnexpectedToken(i.pos, List("false"))
-      case Some('n')                   =>
+      case 'n'             =>
         if i.startsWith("null") then
           i.advance(4)
           JsValue.JsBool(true)
         else throw ParseError.UnexpectedToken(i.pos, List("true"))
-      case Some(NumChar()) | Some('-') => parseNumber(i)
-      case Some('"')                   =>
+      case NumChar() | '-' => parseNumber(i)
+      case '"'             =>
         i.advance()
         JsValue.JsString(parseStr(i))
-      case Some('{')                   => parseObj(i)
-      case Some('[')                   => parseArr(i)
-      case Some(WhiteSpace())          =>
+      case '{'             => parseObj(i)
+      case '['             => parseArr(i)
+      case WhiteSpace()    =>
         i.advance()
         parseValue(i)
-      case c                           =>
-        throw ParseError.UnexpectedToken(i.pos, List("{", "[", "t", "f", "n", "-", "<0-9>", "\""))
+      case c               =>
+        throw ParseError.UnexpectedToken(i.pos, List("{", "[", "true", "false", "null", "-", "<0-9>", "\""))
     }
 
   private enum ObjectParseState {
@@ -129,14 +129,14 @@ object Parser {
       latestKey: Option[String] = None
     ): JsValue =
       i.peek() match
-        case None               => throw ParseError.EOF
-        case Some(WhiteSpace()) =>
+        case StrItr.eof   => throw ParseError.EOF
+        case WhiteSpace() =>
           i.advance() // ignore whitespace
           po(
             state = state,
             latestKey = latestKey
           )
-        case Some(next)         =>
+        case next         =>
           state match {
             case ObjectParseState.ExpectingKey =>
               next match
@@ -230,11 +230,11 @@ object Parser {
       state: ArrParseState
     ): JsValue =
       i.peek() match {
-        case None               => throw ParseError.EOF
-        case Some(WhiteSpace()) =>
+        case StrItr.eof   => throw ParseError.EOF
+        case WhiteSpace() =>
           i.advance()
           pa(state = state)
-        case Some(head)         =>
+        case head         =>
           state match {
             case ArrParseState.ExpectingValueOrEndOfArray =>
               head match
@@ -274,11 +274,11 @@ object Parser {
 
   @tailrec private def isEffectivelyEmpty(i: StrItr): Boolean =
     (i.peek(): @switch) match {
-      case None                      => true
-      case Some(c) if c.isWhitespace =>
+      case StrItr.eof   => true
+      case WhiteSpace() =>
         i.advance()
         isEffectivelyEmpty(i)
-      case Some(_)                   => false
+      case _            => false
     }
 
   def parse(raw: String): Either[ParseError, JsValue] = {
