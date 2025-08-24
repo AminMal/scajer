@@ -1,4 +1,4 @@
-package json
+package scajer.json
 
 import scala.collection.mutable
 

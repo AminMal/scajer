@@ -4,7 +4,7 @@ import java.util.concurrent.TimeUnit
 
 import scala.io.Source
 
-import core.Parser as MyParser
+import scajer.core.Parser as ScajerParser
 import io.circe.parser.*
 import org.openjdk.jmh.annotations.*
 import play.api.libs.json.*
@@ -25,12 +25,12 @@ class ParsingBenchmark {
 
     // --- Scajer ---
   @Benchmark
-  def scajerParse(): Either[core.ParseError, json.JsValue] =
-    MyParser.parse(src)
+  def scajerParse(): Either[scajer.core.ParseError, scajer.json.JsValue] =
+    ScajerParser.parse(src)
 
   @Benchmark
-  def scajerLargeParse(): Either[core.ParseError, json.JsValue] =
-    MyParser.parse(largeSrc)
+  def scajerLargeParse(): Either[scajer.core.ParseError, scajer.json.JsValue] =
+    ScajerParser.parse(largeSrc)
 
   // --- Circe ---
   @Benchmark

@@ -1,9 +1,9 @@
-package core
+package scajer.core
 
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 
-import json.{JsValue, Num}
+import scajer.json.{JsValue, Num}
 
 object Parser {
 

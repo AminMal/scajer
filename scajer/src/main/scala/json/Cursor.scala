@@ -1,9 +1,9 @@
-package json
+package scajer.json
 
 import scala.annotation.targetName
 import scala.util.{Failure, Success, Try}
 
-import json.JsValue.*
+import scajer.json.JsValue.*
 
 class Cursor private[json] (jsValue: JsValue, error: Option[CursorError], cpath: String) {
 
@@ -23,7 +23,7 @@ class Cursor private[json] (jsValue: JsValue, error: Option[CursorError], cpath:
   }
 
   @targetName("atIndex")
-  def ~>>(idx: Int): Cursor = (jsValue, error) match {
+  def ~>(idx: Int): Cursor = (jsValue, error) match {
     case (_, Some(err))    => this
     case (JsArray(arr), _) =>
       val newPath = s"$cpath.$idx"

@@ -1,4 +1,4 @@
-package core
+package scajer.core
 
 class StrItr(val raw: String, var pos: Int, var cp: Int = -1) {
   private final val len   = raw.length

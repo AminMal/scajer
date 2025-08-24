@@ -1,4 +1,4 @@
-package core
+package scajer.core
 
 enum ParseError extends RuntimeException {
   case EOF

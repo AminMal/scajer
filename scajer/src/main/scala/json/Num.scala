@@ -1,6 +1,6 @@
-package json
+package scajer.json
 
-import core.ParseError
+import scajer.core.ParseError
 
 enum Num {
   case L(n: Long)

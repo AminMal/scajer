@@ -1,4 +1,4 @@
-package json
+package scajer.json
 
 enum CursorError {
   case PathDoesNotExist(path: String)
