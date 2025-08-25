@@ -175,4 +175,14 @@ class CursorTest extends FunSuite {
         assertEquals(e.toString, "value at `.true` is not an array")
     }
   }
+
+  // index out of bounds
+  test("Cursor trying to access non-array AST as array") {
+    (json.cursor ~> "arr" ~> 986).value match {
+      case v: JsValue     => fail("should have failed with proper CursorError")
+      case e: CursorError =>
+        assertEquals(e, CursorError.IndexOutOfBounds(".arr.986", 3))
+        assertEquals(e.toString, "json array index out of bounds.\n\t.arr.986\n\tarray size: 3")
+    }
+  }
 }
