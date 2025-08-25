@@ -1,3 +1,4 @@
+
 ThisBuild / version := "0.1.0-SNAPSHOT"
 
 ThisBuild / scalaVersion := "3.3.6"
@@ -6,7 +7,8 @@ lazy val scajer = (project in file("scajer"))
   .settings(
     name := "Scajer",
     idePackagePrefix := Some("scajer"),
-    scalafmtOnCompile := true
+    scalafmtOnCompile := true,
+    libraryDependencies += "org.scalameta" %% "munit" % "1.1.1"    % Test
   )
 
 lazy val benchmark = (project in file("bench"))

@@ -1,10 +1,8 @@
 package scajer.core
 
-class StrItr(val raw: String, var pos: Int, var cp: Int = -1) {
+class StrItr private (val raw: String, var pos: Int, var cp: Int = -1) {
   private final val len   = raw.length
   inline def peek(): Char = if hasNext then raw(pos) else StrItr.eof
-
-  inline def take(n: Int): String = raw.slice(pos, pos + n)
 
   inline def hasNext: Boolean = pos < len
 
@@ -22,11 +20,11 @@ class StrItr(val raw: String, var pos: Int, var cp: Int = -1) {
 
   inline def advance(n: Int = 1): Unit = pos += n
 
-  def pop(): Char = {
-    val value = peek()
-    advance()
-    value
-  }
+  def pop(): Char =
+    if hasNext then {
+      advance()
+      raw(pos - 1) // because the above call to advance shifter position by one
+    } else StrItr.eof
 
   def startsWith(other: String): Boolean = {
     var i   = 0
@@ -40,5 +38,6 @@ class StrItr(val raw: String, var pos: Int, var cp: Int = -1) {
 }
 
 object StrItr {
-  final val eof: Char = 0
+  final val eof: Char         = 0
+  def init(s: String): StrItr = StrItr(s, 0, -1)
 }

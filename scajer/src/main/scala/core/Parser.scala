@@ -7,24 +7,24 @@ import scajer.json.{JsValue, Num}
 
 object Parser {
 
-  private object NumChar {
+  private[core] object NumChar {
     def unapply(c: Char): Boolean = c.isDigit
   }
 
-  private object WhiteSpace {
+  private[core] object WhiteSpace {
     def unapply(c: Char): Boolean = c.isWhitespace
   }
 
-  @tailrec private def parseSimpleStr(i: StrItr): Int =
+  @tailrec private[core] def parseSimpleStr(i: StrItr): Int =
     i.pop() match {
+      case StrItr.eof   => throw ParseError.EOF
       case c if c < ' ' => throw ParseError.InvalidCharacter(i.pos, c)
       case '\\'         => -1
       case '"'          => i.pos
-      case StrItr.eof   => throw ParseError.EOF
       case _            => parseSimpleStr(i)
     }
 
-  private def smartParseStr(i: StrItr): String = {
+  private[core] def smartParseStr(i: StrItr): String = {
     val start = i.pos
     i.checkpoint()
     (parseSimpleStr(i): @switch) match {
@@ -37,11 +37,12 @@ object Parser {
     }
   }
 
-  @tailrec private def parseStrTR(i: StrItr, s: StringBuilder = StringBuilder()): String =
+  @tailrec private[core] def parseStrTR(i: StrItr, s: StringBuilder = StringBuilder()): String =
     i.pop() match {
-      case StrItr.eof => throw ParseError.EOF
-      case '"'        => s.toString()
-      case '\\'       =>
+      case StrItr.eof   => throw ParseError.EOF
+      case c if c < ' ' => throw ParseError.InvalidCharacter(i.pos, c)
+      case '"'          => s.toString()
+      case '\\'         =>
         i.pop() match {
           case StrItr.eof => throw ParseError.EOF
           case 'b'        => s.append('\b')
@@ -56,15 +57,12 @@ object Parser {
           case other      => throw ParseError.InvalidEscapeCharacter(i.pos, other)
         }
         parseStrTR(i, s)
-      case other      =>
+      case other        =>
         s.append(other)
         parseStrTR(i, s)
     }
 
-  private inline def parseStr(i: StrItr): String =
-    smartParseStr(i)
-
-  private def parseNumber(i: StrItr): JsValue = {
+  private[core] def parseNumber(i: StrItr): JsValue = {
     val startPos = i.pos
 
     @tailrec def parseNumberTr: JsValue =
@@ -86,7 +84,7 @@ object Parser {
     }
   }
 
-  @tailrec private def parseValue(i: StrItr): JsValue =
+  @tailrec private[core] def parseValue(i: StrItr): JsValue =
     i.peek() match {
       case 't'             =>
         if i.startsWith("true") then
@@ -101,12 +99,12 @@ object Parser {
       case 'n'             =>
         if i.startsWith("null") then
           i.advance(4)
-          JsValue.JsBool(true)
-        else throw ParseError.UnexpectedToken(i.pos, List("true"))
+          JsValue.JsNull
+        else throw ParseError.UnexpectedToken(i.pos, List("null"))
       case NumChar() | '-' => parseNumber(i)
       case '"'             =>
         i.advance()
-        JsValue.JsString(parseStr(i))
+        JsValue.JsString(smartParseStr(i))
       case '{'             => parseObj(i)
       case '['             => parseArr(i)
       case WhiteSpace()    =>
@@ -120,7 +118,7 @@ object Parser {
     case ExpectingKey, ExpectingKeyOrEndOfObject, ExpectingCommaOrEndOfObject, ExpectingColon, ExpectingValue
   }
 
-  private def parseObj(i: StrItr): JsValue = {
+  private[core] def parseObj(i: StrItr): JsValue = {
     val keyValues = mutable.HashMap.empty[String, JsValue]
     i.advance() // pop {
 
@@ -144,12 +142,12 @@ object Parser {
                   i.advance() // pop '"'
                   po(
                     state = ObjectParseState.ExpectingColon,
-                    latestKey = Some(parseStr(i))
+                    latestKey = Some(smartParseStr(i))
                   )
                 case _   =>
                   throw ParseError.UnexpectedToken(
                     i.pos,
-                    List("\"")
+                    List("<key>")
                   )
 
             case ObjectParseState.ExpectingKeyOrEndOfObject =>
@@ -161,12 +159,12 @@ object Parser {
                   i.advance() // pop '"'
                   po(
                     state = ObjectParseState.ExpectingColon,
-                    latestKey = Some(parseStr(i))
+                    latestKey = Some(smartParseStr(i))
                   )
                 case _   =>
                   throw ParseError.UnexpectedToken(
                     i.pos,
-                    List("\"", "}")
+                    List("<key>", "}")
                   )
 
             case ObjectParseState.ExpectingCommaOrEndOfObject =>
@@ -218,11 +216,11 @@ object Parser {
     po(ObjectParseState.ExpectingKeyOrEndOfObject, None)
   }
 
-  private enum ArrParseState {
+  private[core] enum ArrParseState {
     case ExpectingValue, ExpectingValueOrEndOfArray, ExpectingCommaOrEndOfArray
   }
 
-  private def parseArr(i: StrItr): JsValue = {
+  private[core] def parseArr(i: StrItr): JsValue = {
     val values = mutable.ListBuffer.empty[JsValue]
     i.advance() // pop [
 
@@ -272,7 +270,7 @@ object Parser {
     pa(ArrParseState.ExpectingValueOrEndOfArray)
   }
 
-  @tailrec private def isEffectivelyEmpty(i: StrItr): Boolean =
+  @tailrec private[core] def isEffectivelyEmpty(i: StrItr): Boolean =
     (i.peek(): @switch) match {
       case StrItr.eof   => true
       case WhiteSpace() =>
@@ -282,7 +280,7 @@ object Parser {
     }
 
   def parse(raw: String): Either[ParseError, JsValue] = {
-    val i = StrItr(raw, 0)
+    val i = StrItr.init(raw)
     try {
       val value = parseValue(i)
       if isEffectivelyEmpty(i) then Right(value)

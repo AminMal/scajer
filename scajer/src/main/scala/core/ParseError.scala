@@ -16,5 +16,6 @@ enum ParseError extends RuntimeException {
     case ParseError.InvalidNumber(tpe, value)      => s"Invalid number $value for type $tpe"
     case ParseError.InvalidJsonStructure           => "Invalid Json structure"
 
+  override def getMessage: String            = this.toString
   override def fillInStackTrace(): Throwable = this
 }
